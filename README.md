@@ -48,7 +48,7 @@ and put the files under ./w2v
 
 ```bash
 # replace bags_and_cases with any of the domains in ./data/train
-./scripts/prep_mate.sh bags_and_cases
+sh ./scripts/prep_mate.sh bags_and_cases
 ```
 
 ---
