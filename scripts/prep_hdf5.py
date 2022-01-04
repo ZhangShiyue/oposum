@@ -8,8 +8,11 @@ import operator
 import argparse
 from random import sample, seed
 from math import ceil
+import nltk
+nltk.data.path.append('/ssd-playpen/home/shiyue/oposum/cache')
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
+from tqdm import tqdm
 
 def parallel_chunks(l1, l2, l3, l4, n):
     """
@@ -18,7 +21,7 @@ def parallel_chunks(l1, l2, l3, l4, n):
     if len(l1) != len(l2) or len(l2) != len(l3) or len(l3) != len(l4):
         raise IndexError
     else:
-        for i in xrange(0, len(l1), n):
+        for i in range(0, len(l1), n):
             yield l1[i:i+n], l2[i:i+n], l3[i:i+n], l4[i:i+n]
 
 def load_bin_vec(fname, vocab):
@@ -33,7 +36,7 @@ def load_bin_vec(fname, vocab):
         # number of bytes per embedding
         binary_len = np.dtype('float32').itemsize * layer1_size
 
-        for line in xrange(vocab_size):
+        for line in tqdm(range(vocab_size)):
             word = []
             while True:
                 ch = f.read(1)
@@ -49,6 +52,20 @@ def load_bin_vec(fname, vocab):
             else:
                 f.read(binary_len)
     return word_vecs
+
+
+def load_glove_vec(fname, vocab):
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+    word_vecs = {}
+    for line in tqdm(lines):
+        items = line.strip().split(' ')
+        word = items[0]
+        if vocab is None or word in vocab:
+            vec = list(map(float, items[1:]))
+            word_vecs[word] = vec
+    return word_vecs
+
 
 def line_to_words(line, min_len, max_len, stop_words=None, lemmatize=True):
     """
@@ -92,6 +109,7 @@ def line_to_words(line, min_len, max_len, stop_words=None, lemmatize=True):
         original.append(edus_o[i])
 
     return segs, original, ids, total
+
 
 def get_vocab(file, min_len, max_len, stop_words, lemmatize):
     """
@@ -154,11 +172,11 @@ def load_data(file, args):
     max_len_actual, seg_cnt, doc_cnt, word2id, prod2id, word2cnt = get_vocab(file, min_len, max_len,
             stop_words, lemmatize)
 
-    print 'Number of documents:', doc_cnt
-    print 'Number of edus:', seg_cnt
-    print 'Number of products:', len(prod2id)
-    print 'Max segment length:', max_len_actual
-    print 'Vocabulary size:', len(word2id)
+    print('Number of documents:', doc_cnt)
+    print('Number of edus:', seg_cnt)
+    print('Number of products:', len(prod2id))
+    print('Max segment length:', max_len_actual)
+    print('Vocabulary size:', len(word2id))
 
     data = []
     products = []
@@ -272,8 +290,8 @@ def main():
 
     # populate embedding matrix
     vocab_size = len(word2id) + 1
-    w2v = load_bin_vec(args.w2v, word2id)
-    embed = np.random.uniform(-0.25, 0.25, (vocab_size, len(w2v.values()[0])))
+    w2v = load_glove_vec(args.w2v, word2id)
+    embed = np.random.uniform(-0.25, 0.25, (vocab_size, len(list(w2v.values())[0])))
     embed[0] = 0
     for word, vec in w2v.items():
       embed[word2id[word]] = vec
@@ -282,15 +300,16 @@ def main():
 
     # sort data by segment length (to minimize padding)
     data, products, scodes, original = zip(*sorted(
-        sample(zip(data, products, scodes, original), len(data)),
+        sample(list(zip(data, products, scodes, original)), len(data)),
         key=lambda x:len(x[0])))
 
     filename = args.name + '.hdf5'
+    print(filename)
     with h5py.File(filename, 'w') as f:
         f['w2v'] = np.array(embed)
 
-        for i, (segments, prods, codes, segs_o), in enumerate(parallel_chunks(data, products,
-                                                        scodes, original, args.batch_size)):
+        for i, (segments, prods, codes, segs_o), in tqdm(enumerate(parallel_chunks(data, products,
+                                                        scodes, original, args.batch_size))):
             max_len_batch = len(max(segments, key=len))
             batch_id = str(i)
 

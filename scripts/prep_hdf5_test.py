@@ -96,11 +96,11 @@ def load_data(file, args, word2id, prod2id):
 
     f.close()
 
-    print 'Number of documents:', doc_cnt
-    print 'Number of segments:', seg_cnt
-    print 'Number of products:', len(prods)
-    print 'Number of aspects:', len(aspects)
-    print 'Vocabulary size:', len(word2id)
+    print('Number of documents:', doc_cnt)
+    print('Number of segments:', seg_cnt)
+    print('Number of products:', len(prods))
+    print('Number of aspects:', len(aspects))
+    print('Vocabulary size:', len(word2id))
 
 
     return data, labels, products, scodes, original, aspects
@@ -182,7 +182,7 @@ def main():
 
     seed(args.seed)
     data, labels, products, scodes, original = zip(*sorted(
-        sample(zip(data, labels, products, scodes, original), len(data)),
+        sample(list(zip(data, labels, products, scodes, original)), len(data)),
         key=lambda x:len(x[0])))
 
     filename = args.name + '.hdf5'
